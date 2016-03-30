@@ -13,15 +13,19 @@ import scala.beans.BeanProperty
 class SearchFilePO {
   @BeanProperty var filePath: String = _
 
-  def toRow():Row = {Row.apply(filePath)}
+  def toRow(): Row = {
+    Row.apply(filePath)
+  }
 }
 
 object SearchFilePO {
-  val structType = {StructType(Array[String]("filePath").map(fieldName => StructField(fieldName, StringType, true)))}
+  val structType = {
+    StructType(Array[String]("filePath").map(fieldName => StructField(fieldName, StringType, true)))
+  }
   val tableName = "table_file_search_terry"
   val creationString = "CREATE TABLE IF NOT EXISTS " + tableName + "(filePath STRING)"
 
-  def saveRowRDD(rowRDD: List[Row], hiveContext: HiveContext, sc: SparkContext):Unit ={
-    if(rowRDD.size > 0) hiveContext.createDataFrame(sc.parallelize(rowRDD), structType).insertInto(tableName)
+  def saveRowRDD(rowRDD: List[Row], hiveContext: HiveContext, sc: SparkContext): Unit = {
+    if (rowRDD.size > 0) hiveContext.createDataFrame(sc.parallelize(rowRDD), structType).insertInto(tableName)
   }
 }

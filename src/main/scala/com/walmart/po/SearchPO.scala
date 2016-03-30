@@ -28,15 +28,19 @@ class SearchPO {
   @BeanProperty var category: String = _
   @BeanProperty var resultCount: String = _
 
-  def toRow():Row = {Row.apply(deviceId, time, screenSize, nt, ln, model, op, systemName, osVersion, tz, buildVersion, name, store, keyword, category, resultCount)}
+  def toRow(): Row = {
+    Row.apply(deviceId, time, screenSize, nt, ln, model, op, systemName, osVersion, tz, buildVersion, name, store, keyword, category, resultCount)
+  }
 }
 
 object SearchPO {
-  val structType = {StructType(Array[String]("deviceId", "time", "screenSize", "nt", "ln", "model", "op", "systemName", "osVersion", "tz", "buildVersion", "name", "store", "keyword", "category", "resultCount").map(fieldName => StructField(fieldName, StringType, true)))}
+  val structType = {
+    StructType(Array[String]("deviceId", "time", "screenSize", "nt", "ln", "model", "op", "systemName", "osVersion", "tz", "buildVersion", "name", "store", "keyword", "category", "resultCount").map(fieldName => StructField(fieldName, StringType, true)))
+  }
   val tableName = "table_search_terry"
-  val creationString = "CREATE TABLE IF NOT EXISTS " + tableName +  "(deviceId STRING , time STRING ,screenSize STRING , nt STRING , ln STRING ,model STRING ,op STRING , systemName STRING ,osVersion STRING ,tz STRING ,buildVersion STRING ,name STRING,store STRING,keyword STRING,category STRING, resultCount STRING)"
+  val creationString = "CREATE TABLE IF NOT EXISTS " + tableName + "(deviceId STRING , time STRING ,screenSize STRING , nt STRING , ln STRING ,model STRING ,op STRING , systemName STRING ,osVersion STRING ,tz STRING ,buildVersion STRING ,name STRING,store STRING,keyword STRING,category STRING, resultCount STRING)"
 
-  def saveRowRDD(rowRDD: List[Row], hiveContext: HiveContext, sc: SparkContext):Unit ={
-    if(rowRDD.size > 0) hiveContext.createDataFrame(sc.parallelize(rowRDD), structType).insertInto(tableName)
+  def saveRowRDD(rowRDD: List[Row], hiveContext: HiveContext, sc: SparkContext): Unit = {
+    if (rowRDD.size > 0) hiveContext.createDataFrame(sc.parallelize(rowRDD), structType).insertInto(tableName)
   }
 }

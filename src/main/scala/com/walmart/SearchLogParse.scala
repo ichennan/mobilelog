@@ -18,6 +18,7 @@ import org.json.JSONObject
 object SearchLogParse {
   var searchPoList = List[Row]()
   var newFileList = List[String]()
+
   def main(args: Array[String]) {
     // logger
     Logger.getLogger("org.apache.spark").setLevel(Level.WARN)
@@ -44,40 +45,44 @@ object SearchLogParse {
     hiveContext.sql("use mobile")
     hiveContext.sql(SearchPO.creationString)
     hiveContext.sql(SearchFilePO.creationString)
-    val fileList  = new ArrayList[String]()
-    hiveContext.sql("select * from " + SearchFilePO.tableName).collect().foreach {x => fileList.add(x.getString(0)) }
+    val fileList = new ArrayList[String]()
+    hiveContext.sql("select * from " + SearchFilePO.tableName).collect().foreach { x => fileList.add(x.getString(0)) }
     val fileListSize = fileList.size()
 
     //deal with the file in filePath
-    doFile(sc ,hiveContext, fs, filePath, fileList)
+    doFile(sc, hiveContext, fs, filePath, fileList)
     SearchPO.saveRowRDD(searchPoList, hiveContext, sc)
-    SearchFilePO.saveRowRDD(newFileList.map {Row(_)}, hiveContext, sc)
+    SearchFilePO.saveRowRDD(newFileList.map {
+      Row(_)
+    }, hiveContext, sc)
 
     println("Finished!!!")
     sc.stop()
-    println("==========(" + (fileList.size - fileListSize) +" files) GetSearchData success time is " + (System.currentTimeMillis() - systime))
+    println("==========(" + (fileList.size - fileListSize) + " files) GetSearchData success time is " + (System.currentTimeMillis() - systime))
   }
 
-  def doFile(sc : SparkContext , hiveContext: HiveContext, fs: FileSystem, filePath: Path, fileList: ArrayList[String]) {
+  def doFile(sc: SparkContext, hiveContext: HiveContext, fs: FileSystem, filePath: Path, fileList: ArrayList[String]) {
     println("==========doFile filePath is " + filePath)
-    try{
+    try {
       val fileState = fs.listStatus(filePath)
       fileState.foreach { status =>
         if (!status.isDirectory()) {
           val path = status.getPath.toString()
           val name = status.getPath.getName
           //println("==========doFile path is :" + path)
-          if (name.split("_").length ==2) {
-            if(name.length > 10 && name.substring(name.length() -10, name.length()).compareTo("2015-07-31") >=0){
+          if (name.split("_").length == 2) {
+            if (name.length > 10 && name.substring(name.length() - 10, name.length()).compareTo("2015-07-31") >= 0) {
               //println("==========doFile name is :" + name + ";date is :" + name.substring(name.length() -10, name.length()))
               if (!fileList.contains(path)) {
-                searchPoList = searchPoList ::: insertData(sc ,hiveContext, path)
+                searchPoList = searchPoList ::: insertData(sc, hiveContext, path)
                 newFileList = newFileList.::(path)
                 fileList.add(path)
                 //Avoid size exceed
-                if(newFileList.size >= 100){
+                if (newFileList.size >= 100) {
                   SearchPO.saveRowRDD(searchPoList, hiveContext, sc)
-                  SearchFilePO.saveRowRDD(newFileList.map {Row(_)}, hiveContext, sc)
+                  SearchFilePO.saveRowRDD(newFileList.map {
+                    Row(_)
+                  }, hiveContext, sc)
                   searchPoList = List[Row]()
                   newFileList = List[String]()
                 }
@@ -86,7 +91,7 @@ object SearchLogParse {
           }
         } else {
           println("==========doFile dir is " + status.getPath())
-          doFile(sc ,hiveContext, fs, status.getPath(), fileList)
+          doFile(sc, hiveContext, fs, status.getPath(), fileList)
         }
       }
     } catch {
@@ -96,30 +101,30 @@ object SearchLogParse {
     }
   }
 
-  def insertData(sc : SparkContext , hiveContext: HiveContext, path: String): List[Row] = {
-    println("==========path: " +  path)
+  def insertData(sc: SparkContext, hiveContext: HiveContext, path: String): List[Row] = {
+    println("==========path: " + path)
     var searchPoList_file = List[Row]()
     var linesInFile = 0
     var searchPo = new SearchPO
     sc.textFile(path).collect().foreach { line =>
-      if(line.indexOf("{") > -1){
-        if(searchPo != null && searchPo.time != null) searchPoList_file = searchPoList_file.::(searchPo.toRow())
+      if (line.indexOf("{") > -1) {
+        if (searchPo != null && searchPo.time != null) searchPoList_file = searchPoList_file.::(searchPo.toRow())
         searchPo = new SearchPO
       }
       dealLine(line, searchPo)
       linesInFile = linesInFile + 1
     }
-    println("==========lines: " +  linesInFile + ", items: " + searchPoList_file.size)
+    println("==========lines: " + linesInFile + ", items: " + searchPoList_file.size)
     searchPoList_file
   }
 
   def dealLine(line: String, searchPo: SearchPO) = {
-    line match{
-      case _ if(line.indexOf("{") > -1) => {
-        try{
+    line match {
+      case _ if (line.indexOf("{") > -1) => {
+        try {
           searchPo.time = line.substring(1, 20)
-          val clientInfoObj = new JSONObject(line.substring(line.indexOf("{"),line.indexOf("}") + 1))
-          if(clientInfoObj != null){
+          val clientInfoObj = new JSONObject(line.substring(line.indexOf("{"), line.indexOf("}") + 1))
+          if (clientInfoObj != null) {
             searchPo.deviceId = JsonUtils.getString(clientInfoObj, "deviceId")
             searchPo.screenSize = JsonUtils.getString(clientInfoObj, "screenSize")
             searchPo.nt = JsonUtils.getString(clientInfoObj, "nt")
@@ -132,30 +137,30 @@ object SearchLogParse {
             searchPo.buildVersion = JsonUtils.getString(clientInfoObj, "buildVersion")
             searchPo.name = JsonUtils.getString(clientInfoObj, "name")
           }
-        }catch {
+        } catch {
           case t: Throwable => printErrorLine(line)
         }
       }
-      case _ if(line.indexOf("user search info:") > -1) => {
-        if(searchPo == null) printErrorLine(line)
+      case _ if (line.indexOf("user search info:") > -1) => {
+        if (searchPo == null) printErrorLine(line)
         val keywordStr = line.substring(line.indexOf("user search info") + 17, line.length).split(",")
         searchPo.store = keywordStr(0)
         if (keywordStr.length == 3) searchPo.category = keywordStr(2)
         else if (keywordStr.length == 2) searchPo.keyword = keywordStr(1)
       }
-      case _ if(line.indexOf("The results size is:") > -1) => {
-        if(searchPo == null) printErrorLine(line)
+      case _ if (line.indexOf("The results size is:") > -1) => {
+        if (searchPo == null) printErrorLine(line)
         val keywordStr = line.substring(line.indexOf("The results size is:") + 20, line.length).split(",")
         if (keywordStr.length == 1) searchPo.resultCount = keywordStr(0)
         else printErrorLine(line)
       }
-      case _ =>{
+      case _ => {
         printErrorLine(line)
       }
     }
   }
 
-  def printErrorLine(errorLine: String): Unit ={
+  def printErrorLine(errorLine: String): Unit = {
     println("**********error line:" + errorLine)
   }
 }
