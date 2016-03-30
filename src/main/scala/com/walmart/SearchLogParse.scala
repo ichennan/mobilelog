@@ -56,7 +56,7 @@ object SearchLogParse {
       Row(_)
     }, hiveContext, sc)
 
-    println("Finished!!!")
+    println("Finished!!")
     sc.stop()
     println("==========(" + (fileList.size - fileListSize) + " files) GetSearchData success time is " + (System.currentTimeMillis() - systime))
   }
